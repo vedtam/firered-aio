@@ -18,15 +18,7 @@ git clone https://github.com/PRITHIVSAKTHIUR/FireRed-Image-Edit-1.0-Fast.git
 cd FireRed-Image-Edit-1.0-Fast
 ```
 
-### 2. Install Pre-requirements
-
-Certain system-level or structural dependencies must be configured before setting up the main python environment:
-
-```bash
-pip install -r pre-requirements.txt
-```
-
-### 3. Install Standard Dependencies
+### 2. Install Standard Dependencies
 
 Install the core Python packages, which include critical modules like Diffusers, Accelerate, PEFT, and Gradio:
 
@@ -44,13 +36,30 @@ python app.py
 
 Once the model weights are successfully loaded into your device's memory and the server starts, the terminal will provide a local URL (typically `http://127.0.0.1:7860`). Open this link in your web browser to interact with the visual interface.
 
+### Execution Profiles
+
+Use the `FIRERED_EXECUTION_PROFILE` environment variable to control memory and offload behaviour:
+
+| Profile | Description |
+|---|---|
+| `auto` *(default)* | Automatically selects the best mode based on detected GPU VRAM |
+| `gpu` | No offloading — entire model stays on GPU (fastest, requires ~40+ GiB VRAM) |
+| `balanced` | Partial offloading — balances VRAM usage and speed |
+| `low_mem` | Sequential CPU offload — lowest VRAM footprint, slowest |
+
+```bash
+# Example: run with the balanced profile
+FIREED_EXECUTION_PROFILE=balanced python app.py
+```
+
+You can also override the offload mode directly with `FIRERED_OFFLOAD_MODE` (`none`, `partial`, `model`, or `sequential`).
+
 ## Project Structure
 
 * `app.py`: The main entry point script containing the custom Gradio interface setup, pipeline initialization, and inference logic.
 * `qwenimage/`: Core directory housing the transformer and processor modules crucial for the underlying image manipulation techniques.
 * `requirements.txt`: The primary file listing Python library requirements needed to operate the application correctly.
 * `pre-requirements.txt`: A list containing earlier or auxiliary dependency specifications.
-* `examples/`: Directory dedicated to storing sample images and expected outputs to verify application functionality.
 * `LICENSE.txt`: The legal text detailing the licensing constraints and permissions.
 
 ## Workflow
