@@ -31,6 +31,8 @@ done
 
 KEY_ARGS=()
 if [[ -n "$SSH_KEY" ]]; then
+    # Ensure the key has the _runpod suffix RunPod requires.
+    [[ "$SSH_KEY" != *_runpod ]] && SSH_KEY="${SSH_KEY}_runpod"
     KEY_ARGS=(-i "$SSH_KEY")
 fi
 
@@ -61,8 +63,61 @@ fi
 
 cd "$REPO_DIR"
 
-# Ensure CUDA_VISIBLE_DEVICES=0 is set for all future sessions on this pod.
+VENV_DIR="/workspace/.venvs/firered"
+if [[ ! -d "$VENV_DIR" ]]; then
+    echo "[runpod] Creating virtualenv at $VENV_DIR..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+# Ensure CUDA_VISIBLE_DEVICES=0 and HF_HOME (model cache) point to persistent
+# storage on the 50 GB /workspace volume, not the container disk.
 if ! grep -q 'CUDA_VISIBLE_DEVICES' ~/.bashrc 2>/dev/null; then
     echo 'export CUDA_VISIBLE_DEVICES=0' >> ~/.bashrc
     echo "[runpod] Set CUDA_VISIBLE_DEVICES=0 in ~/.bashrc"
 fi
+if ! grep -q 'HF_HOME' ~/.bashrc 2>/dev/null; then
+    echo 'export HF_HOME=/workspace/.cache/huggingface' >> ~/.bashrc
+    echo "[runpod] Set HF_HOME=/workspace/.cache/huggingface in ~/.bashrc"
+fi
+mkdir -p /workspace/.cache/huggingface
+
+# Remove any model cache that landed on the container (ephemeral) disk.
+if [[ -d ~/.cache/huggingface ]]; then
+    echo "[runpod] Cleaning container-disk HF cache (~/.cache/huggingface)..."
+    rm -rf ~/.cache/huggingface
+fi
+
+# Start the app in the background (nohup so it survives session end).
+echo "[runpod] Installing requirements..."
+"$VENV_DIR/bin/python" -m pip install -q --upgrade pip
+"$VENV_DIR/bin/pip" install -q -r requirements.txt
+
+echo "[runpod] Starting server..."
+pkill -f "python app.py" 2>/dev/null || true
+nohup env CUDA_VISIBLE_DEVICES=0 HF_HOME=/workspace/.cache/huggingface "$VENV_DIR/bin/python" app.py > ~/firered.log 2>&1 &
+echo "[runpod] Server PID: $! — logs at ~/firered.log"
+REMOTE
+
+# ── Open SSH tunnel in background, then tail the live log ────────────────────
+echo ""
+echo "Opening tunnel on http://127.0.0.1:7860/ ..."
+
+ssh "${KEY_ARGS[@]}" \
+    -p "$POD_PORT" \
+    -o StrictHostKeyChecking=no \
+    -o ExitOnForwardFailure=no \
+    -L 7860:127.0.0.1:7860 \
+    "root@$POD_HOST" \
+    -N &
+TUNNEL_PID=$!
+trap "kill $TUNNEL_PID 2>/dev/null; exit" INT TERM
+
+echo "Following server log — open http://127.0.0.1:7860/ once you see 'Running on'."
+echo "Press Ctrl-C to disconnect."
+echo ""
+
+ssh "${KEY_ARGS[@]}" \
+    -p "$POD_PORT" \
+    -o StrictHostKeyChecking=no \
+    "root@$POD_HOST" \
+    "tail -f ~/firered.log"
