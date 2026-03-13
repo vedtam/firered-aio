@@ -1,31 +1,41 @@
 #!/usr/bin/env bash
 # Usage:
-#   ./runpod.sh <runpod_host> <tunnel_target>
+#   ./deploy.sh ssh root@<host> -p <port> -i <key>
 #
 # Example:
-#   ./runpod.sh \
-#     "wjf92tey1a58k8-64410d49@ssh.runpod.io" \
-#     "root@157.157.221.29 -p 20665"
+#   ./deploy.sh ssh root@103.196.86.17 -p 43895 -i ~/.ssh/id_ed25519
 
 set -euo pipefail
 
-SSH_HOST="${1:?Usage: $0 \"user@ssh.runpod.io\" \"user@host -p port\"}"
-POD_TARGET="${2:?Usage: $0 \"user@ssh.runpod.io\" \"user@host -p port\"}"
+# Parse the pasted `ssh root@HOST -p PORT -i KEY` command.
+# Accepts with or without the leading "ssh".
+SSH_ARGS=("$@")
+[[ "${SSH_ARGS[0]}" == "ssh" ]] && SSH_ARGS=("${SSH_ARGS[@]:1}")
 
-RUNPOD_KEY="${HOME}/.ssh/id_ed25519_runpod"
+POD_HOST=""
+POD_PORT=22
+SSH_KEY=""
 
-if [[ ! -f "$RUNPOD_KEY" ]]; then
-    echo "Error: key not found: $RUNPOD_KEY" >&2
-    exit 1
+i=0
+while [[ $i -lt ${#SSH_ARGS[@]} ]]; do
+    arg="${SSH_ARGS[$i]}"
+    case "$arg" in
+        root@*) POD_HOST="${arg#root@}" ;;
+        -p)     i=$(( i+1 )); POD_PORT="${SSH_ARGS[$i]}" ;;
+        -i)     i=$(( i+1 )); SSH_KEY="${SSH_ARGS[$i]}" ;;
+    esac
+    i=$(( i+1 ))
+done
+
+[[ -z "$POD_HOST" ]] && { echo "Error: could not parse host from: $*" >&2; exit 1; }
+
+KEY_ARGS=()
+if [[ -n "$SSH_KEY" ]]; then
+    KEY_ARGS=(-i "$SSH_KEY")
 fi
 
-# ── Parse pod host / port ─────────────────────────────────────────────────────
-POD_HOST=$(echo "$POD_TARGET" | awk '{print $1}')
-POD_PORT=$(echo "$POD_TARGET" | sed -nE 's/.*-p[[:space:]]+([0-9]+).*/\1/p')
-
-echo "→ Jump host  : $SSH_HOST"
-echo "→ Pod        : $POD_HOST  (port $POD_PORT)"
-echo "→ Key        : $RUNPOD_KEY"
+echo "→ Pod  : $POD_HOST  (port $POD_PORT)"
+[[ -n "$SSH_KEY" ]] && echo "→ Key  : $SSH_KEY"
 echo ""
 
 # ── Remote: clone repo, install deps and start server ────────────────────────
@@ -33,11 +43,11 @@ REPO="https://github.com/vedtam/firered-aio.git"
 REPO_DIR="/workspace/firered-aio"
 
 ssh -T \
-    -i "$RUNPOD_KEY" \
+    "${KEY_ARGS[@]}" \
     -p "$POD_PORT" \
     -o StrictHostKeyChecking=no \
     -o BatchMode=yes \
-    "$POD_HOST" \
+    "root@$POD_HOST" \
     REPO_DIR="$REPO_DIR" REPO="$REPO" 'bash -s' <<'REMOTE'
 set -e
 
@@ -51,31 +61,8 @@ fi
 
 cd "$REPO_DIR"
 
-# echo "[runpod] Installing pre-requirements..."
-# pip install -q -r pre-requirements.txt
-# echo "[runpod] Installing requirements..."
-# pip install -q -r requirements.txt
-# echo "[runpod] Starting server (balanced profile)..."
-# nohup env FIRERED_EXECUTION_PROFILE=balanced python app.py \
-#     > ~/firered.log 2>&1 &
-# echo "[runpod] Server PID: $!"
-REMOTE
-
-# echo ""
-# echo "Waiting for server to initialise..."
-# sleep 5
-
-# ── Local: open SSH tunnel ────────────────────────────────────────────────────
-# echo ""
-# echo "Tunnel open — open in browser:"
-# echo ""
-# echo "    http://127.0.0.1:7860/"
-# echo ""
-# echo "Press Ctrl-C to close the tunnel."
-# echo ""
-
-# ssh -L 7860:127.0.0.1:7860 \
-#     "$TUNNEL_HOST" \
-#     -p "$TUNNEL_PORT" \
-#     -i "$RUNPOD_KEY" \
-#     -N
+# Ensure CUDA_VISIBLE_DEVICES=0 is set for all future sessions on this pod.
+if ! grep -q 'CUDA_VISIBLE_DEVICES' ~/.bashrc 2>/dev/null; then
+    echo 'export CUDA_VISIBLE_DEVICES=0' >> ~/.bashrc
+    echo "[runpod] Set CUDA_VISIBLE_DEVICES=0 in ~/.bashrc"
+fi
