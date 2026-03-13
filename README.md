@@ -43,13 +43,13 @@ Use the `FIRERED_EXECUTION_PROFILE` environment variable to control memory and o
 | Profile | Description |
 |---|---|
 | `auto` *(default)* | Automatically selects the best mode based on detected GPU VRAM |
-| `gpu` | No offloading — entire model stays on GPU (fastest, requires ~40+ GiB VRAM) |
+| `gpu` | No offloading — entire model stays on GPU (fastest, requires ~72+ GiB VRAM) |
 | `balanced` | Partial offloading — balances VRAM usage and speed |
 | `low_mem` | Sequential CPU offload — lowest VRAM footprint, slowest |
 
 ```bash
 # Example: run with the balanced profile
-FIREED_EXECUTION_PROFILE=balanced python app.py
+FIRERED_EXECUTION_PROFILE=balanced python app.py
 ```
 
 You can also override the offload mode directly with `FIRERED_OFFLOAD_MODE` (`none`, `partial`, `model`, or `sequential`).

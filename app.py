@@ -124,6 +124,9 @@ if not DEV_MODE:
     from qwenimage.qwen_fa3_processor import QwenDoubleStreamAttnProcessorFA3
 
     dtype = torch.bfloat16
+    # Reduce fragmentation-induced OOM on large allocations.
+    if "PYTORCH_CUDA_ALLOC_CONF" not in os.environ:
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     total_vram_gib = 0
     if device.type == "cuda":
         total_vram_gib = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
@@ -136,10 +139,13 @@ if not DEV_MODE:
     }
     default_offload_mode = "none"
     if device.type == "cuda":
-        if total_vram_gib >= 40:
-            default_offload_mode = "partial"
-        else:
+        if total_vram_gib < 24:
+            default_offload_mode = "sequential"
+        elif total_vram_gib < 48:
             default_offload_mode = "model"
+        elif total_vram_gib < 72:
+            default_offload_mode = "partial"
+        # else >=72 GiB (e.g. H100 80GB): keep "none" — full GPU, no offload
 
     if execution_profile == "auto":
         selected_offload_mode = default_offload_mode

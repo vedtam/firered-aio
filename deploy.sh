@@ -65,7 +65,17 @@ fi
 
 cd "$REPO_DIR"
 
-VENV_DIR="/workspace/.venvs/firered"
+# Keep the venv on the container disk (30 GB, 5 GB used) — not on
+# /workspace — so model-cache has the full 50 GB volume to itself.
+VENV_DIR="/root/.venvs/firered"
+
+# Remove any stale venv that may have ended up on /workspace from
+# a previous deploy (it ate disk space needed for model weights).
+if [[ -d "/workspace/.venvs/firered" ]]; then
+    echo "[runpod] Removing old /workspace venv to free volume space..."
+    rm -rf /workspace/.venvs
+fi
+
 if [[ ! -d "$VENV_DIR" ]]; then
     echo "[runpod] Creating virtualenv at $VENV_DIR..."
     python3 -m venv --system-site-packages "$VENV_DIR"
@@ -96,7 +106,7 @@ echo "[runpod] Installing requirements..."
 
 echo "[runpod] Starting server..."
 pkill -f "python app.py" 2>/dev/null || true
-nohup env CUDA_VISIBLE_DEVICES=0 HF_HOME=/workspace/.cache/huggingface "$VENV_DIR/bin/python" app.py > ~/firered.log 2>&1 &
+nohup env CUDA_VISIBLE_DEVICES=0 HF_HOME=/workspace/.cache/huggingface PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True "$VENV_DIR/bin/python" app.py > ~/firered.log 2>&1 &
 echo "[runpod] Server PID: $! — logs at ~/firered.log"
 REMOTE
 
