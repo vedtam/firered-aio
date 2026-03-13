@@ -49,6 +49,8 @@ ssh -T \
     -p "$POD_PORT" \
     -o StrictHostKeyChecking=no \
     -o BatchMode=yes \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=60 \
     "root@$POD_HOST" \
     REPO_DIR="$REPO_DIR" REPO="$REPO" 'bash -s' <<'REMOTE'
 set -e
@@ -66,7 +68,7 @@ cd "$REPO_DIR"
 VENV_DIR="/workspace/.venvs/firered"
 if [[ ! -d "$VENV_DIR" ]]; then
     echo "[runpod] Creating virtualenv at $VENV_DIR..."
-    python3 -m venv "$VENV_DIR"
+    python3 -m venv --system-site-packages "$VENV_DIR"
 fi
 
 # Ensure CUDA_VISIBLE_DEVICES=0 and HF_HOME (model cache) point to persistent
@@ -89,8 +91,8 @@ fi
 
 # Start the app in the background (nohup so it survives session end).
 echo "[runpod] Installing requirements..."
-"$VENV_DIR/bin/python" -m pip install -q --upgrade pip
-"$VENV_DIR/bin/pip" install -q -r requirements.txt
+"$VENV_DIR/bin/python" -m pip install --upgrade pip
+"$VENV_DIR/bin/pip" install -r requirements.txt
 
 echo "[runpod] Starting server..."
 pkill -f "python app.py" 2>/dev/null || true

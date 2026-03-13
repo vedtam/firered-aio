@@ -4,12 +4,10 @@ git+https://github.com/huggingface/peft.git
 transformers==4.57.6
 huggingface_hub
 sentencepiece
-torchvision
 kernels
 spaces
 hf_xet
 hf_transfer
 gradio
-torch
 numpy
 av
