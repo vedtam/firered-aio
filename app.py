@@ -270,29 +270,6 @@ def infer(
         gc.collect()
         torch.cuda.empty_cache()
 
-@spaces.GPU
-def infer_example(images, prompt):
-    if not images:
-        return None, 0
-
-    if isinstance(images, str):
-        images_list = [images]
-    else:
-        images_list = images
-
-    result, seed = infer(
-        images=images_list,
-        prompt=prompt,
-        negative_prompt="",
-        seed=0,
-        randomize_seed=True,
-        guidance_scale=1.0,
-        width=1024,
-        height=1024,
-        steps=4
-    )
-    return result, seed
-
 css = """
 #col-container {
     margin: 0 auto;
@@ -345,22 +322,6 @@ with gr.Blocks() as demo:
                     height = gr.Slider(label="Height", minimum=256, maximum=2048, step=8, value=1024)
                     steps = gr.Slider(label="Inference Steps", minimum=1, maximum=50, step=1, value=4)
 
-        gr.Examples(
-            examples=[
-                [["examples/1.jpg"], "cinematic polaroid with soft grain subtle vignette gentle lighting white frame handwritten photographed 'Fire-Edit' preserving realistic texture and details."],
-                [["examples/2.jpg"], "Transform the image into a dotted cartoon style."],
-                [["examples/3.jpeg"], "Convert it to black and white."],
-                [["examples/4.jpg", "examples/5.jpg"], "Replace her glasses with the new glasses from image 1."],
-                [["examples/8.jpg", "examples/9.png"], "Replace the current clothing with the clothing from the reference image 2. Keep the person’s face, hairstyle, body pose, background, lighting, and camera angle unchanged. Ensure the new outfit fits naturally with realistic fabric texture, proper shadows, folds, and accurate proportions. Match the lighting, color tone, and overall style for a seamless and high-quality result."],
-                [["examples/10.jpg", "examples/11.png"], "Replace the current clothing with the clothing from the reference image 2. Keep the person’s face, hairstyle, body pose, background, lighting, and camera angle unchanged. Ensure the new outfit fits naturally with realistic fabric texture, proper shadows, folds, and accurate proportions. Match the lighting, color tone, and overall style for a seamless and high-quality result."],
-            ],
-            inputs=[images, prompt],
-            outputs=[output_image, seed],
-            fn=infer_example,
-            cache_examples=False,
-            label="Examples"
-        )
-        
         gr.Markdown("[*](https://huggingface.co/FireRedTeam/FireRed-Image-Edit-1.0)This is still an experimental Space for FireRed-Image-Edit-1.0.")
 
     images.change(
