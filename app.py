@@ -1,6 +1,13 @@
 import os
 import gc
 import importlib.util
+
+# Fix: an empty string for CUDA_VISIBLE_DEVICES masks all GPUs and causes
+# "CUDA unknown error" inside PyTorch. Unset it so the driver enumerates
+# devices normally. Must happen BEFORE torch is imported.
+if os.environ.get("CUDA_VISIBLE_DEVICES", None) == "":
+    del os.environ["CUDA_VISIBLE_DEVICES"]
+
 import gradio as gr
 import numpy as np
 import spaces
@@ -155,11 +162,14 @@ print("Execution profile:", execution_profile)
 if total_vram_gib:
     print(f"GPU VRAM: {total_vram_gib:.2f} GiB")
 
-try:
-    pipe.transformer.set_attn_processor(QwenDoubleStreamAttnProcessorFA3())
-    print("Flash Attention 3 Processor set successfully.")
-except Exception as e:
-    print(f"Warning: Could not set FA3 processor: {e}")
+if device.type == "cuda":
+    try:
+        pipe.transformer.set_attn_processor(QwenDoubleStreamAttnProcessorFA3())
+        print("Flash Attention 3 Processor set successfully.")
+    except Exception as e:
+        print(f"Warning: Could not set FA3 processor, using default: {e}")
+else:
+    print("Skipping FA3 processor (not on CUDA).")
 
 MAX_SEED = np.iinfo(np.int32).max
 

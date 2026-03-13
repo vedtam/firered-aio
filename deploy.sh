@@ -55,7 +55,9 @@ cd "$REPO_DIR"
 # echo "[runpod] Installing requirements..."
 # pip install -q -r requirements.txt
 # echo "[runpod] Starting server (balanced profile)..."
-# nohup env FIRERED_EXECUTION_PROFILE=balanced python app.py \
+# CUDA_VISIBLE_DEVICES=0 is set explicitly to avoid the "CUDA unknown error"
+# that occurs when the variable is unset or empty in some RunPod containers.
+# nohup env CUDA_VISIBLE_DEVICES=0 FIRERED_EXECUTION_PROFILE=balanced python app.py \
 #     > ~/firered.log 2>&1 &
 # echo "[runpod] Server PID: $!"
 REMOTE
