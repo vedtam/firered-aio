@@ -1,31 +1,6 @@
 import os
 import gc
-import ctypes
-import subprocess
 import importlib.util
-
-# Fix: In some RunPod/containerised environments the nvidia_uvm kernel module
-# is loaded but its device file (/dev/nvidia-uvm) has not been created yet,
-# causing PyTorch's cudaGetDeviceCount() to return "CUDA unknown error" and
-# silently fall back to CPU.
-#
-# Loading libcuda.so via ctypes and calling cuInit(0) forces the CUDA driver
-# to fully initialise (including creating /dev/nvidia-uvm) before PyTorch
-# tries to enumerate devices.  This must run BEFORE `import torch`.
-try:
-    _libcuda = ctypes.CDLL("libcuda.so.1", mode=ctypes.RTLD_GLOBAL)
-    _libcuda.cuInit(0)
-except (OSError, AttributeError):
-    # libcuda not present (CPU-only machine) or cuInit not found — ignore.
-    pass
-# Also run nvidia-smi to wake the driver daemon (harmless if no GPU).
-subprocess.run(["nvidia-smi"], capture_output=True)
-
-# Fix: an empty string for CUDA_VISIBLE_DEVICES masks all GPUs and causes
-# "CUDA unknown error" inside PyTorch. Unset it so the driver enumerates
-# devices normally. Must happen BEFORE torch is imported.
-if os.environ.get("CUDA_VISIBLE_DEVICES", None) == "":
-    del os.environ["CUDA_VISIBLE_DEVICES"]
 
 import gradio as gr
 import numpy as np
