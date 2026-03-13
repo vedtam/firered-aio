@@ -3,12 +3,20 @@ import gc
 import subprocess
 import importlib.util
 
-# Fix: In some RunPod containers the CUDA driver daemon hasn't fully
-# initialised by the time Python starts, causing PyTorch to report
-# "CUDA unknown error" and fall back to CPU.  Running nvidia-smi once
-# via subprocess forces the driver to wake up before torch is imported.
-# This is a no-op on machines without NVIDIA GPUs.
-subprocess.run(["nvidia-smi"], capture_output=True)
+# Fix: In some RunPod/containerised environments the nvidia_uvm kernel module
+# is loaded but its device file (/dev/nvidia-uvm) has not been created yet,
+# causing PyTorch's cudaGetDeviceCount() to return "CUDA unknown error" and
+# silently fall back to CPU.
+#
+# `nvidia-modprobe -u` is the proper userspace tool to create that device file
+# without needing root kernel-module permissions.  We fall back to a plain
+# `nvidia-smi` call which at minimum wakes the driver daemon.
+# Both calls are no-ops on machines without NVIDIA GPUs.
+# This block MUST run before `import torch`.
+try:
+    subprocess.run(["nvidia-modprobe", "-u", "-c=0"], capture_output=True)
+except FileNotFoundError:
+    subprocess.run(["nvidia-smi"], capture_output=True)
 
 # Fix: an empty string for CUDA_VISIBLE_DEVICES masks all GPUs and causes
 # "CUDA unknown error" inside PyTorch. Unset it so the driver enumerates
