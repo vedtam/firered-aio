@@ -65,15 +65,13 @@ fi
 
 cd "$REPO_DIR"
 
-# Keep the venv on the container disk (30 GB, 5 GB used) — not on
-# /workspace — so model-cache has the full 50 GB volume to itself.
-VENV_DIR="/root/.venvs/firered"
+# Keep the venv on the /workspace network volume so it survives pod resets.
+VENV_DIR="/workspace/.venvs/firered"
 
-# Remove any stale venv that may have ended up on /workspace from
-# a previous deploy (it ate disk space needed for model weights).
-if [[ -d "/workspace/.venvs/firered" ]]; then
-    echo "[runpod] Removing old /workspace venv to free volume space..."
-    rm -rf /workspace/.venvs
+# Remove any stale venv that may be left on the container (ephemeral) disk.
+if [[ -d "/root/.venvs/firered" ]]; then
+    echo "[runpod] Removing old ephemeral venv at /root/.venvs to free container-disk space..."
+    rm -rf /root/.venvs
 fi
 
 if [[ ! -d "$VENV_DIR" ]]; then

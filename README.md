@@ -49,10 +49,23 @@ Use the `FIRERED_EXECUTION_PROFILE` environment variable to control memory and o
 
 ```bash
 # Example: run with the balanced profile
-FIRERED_EXECUTION_PROFILE=balanced python app.py
+FIRERED_EXECUTION_PROFILE=low_mem python app.py
 ```
 
 You can also override the offload mode directly with `FIRERED_OFFLOAD_MODE` (`none`, `partial`, `model`, or `sequential`).
+
+### Persistent Storage (RunPod / network volume)
+
+When running on a pod with a `/workspace` network volume, all persistent data lives there:
+
+| Path | Contents |
+|---|---|
+| `/workspace/firered-aio` | Repository |
+| `/workspace/.venvs/firered` | Python virtualenv (survives pod resets) |
+| `/workspace/.cache/huggingface` | Model weights cache |
+| `/workspace/outputs` | Generated images (override with `FIRERED_OUTPUT_DIR`) |
+
+The `deploy.sh` script handles setup automatically. Re-running it on a fresh pod will reuse the existing venv and model cache, skipping the slow reinstall/download steps.
 
 ## Project Structure
 
