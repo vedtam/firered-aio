@@ -200,6 +200,9 @@ if not DEV_MODE:
     else:
         print("Skipping FA3 processor (not on CUDA).")
 
+OUTPUT_DIR = os.environ.get("FIRERED_OUTPUT_DIR", "/workspace/outputs")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 MAX_SEED = 2**31 - 1
 
 def snap_dimension(value):
@@ -272,6 +275,10 @@ def infer(
         img = Image.new("RGB", (w, h), color=(30, 30, 40))
         d = ImageDraw.Draw(img)
         d.text((w // 2 - 80, h // 2 - 10), f"[DEV] {prompt[:40]}", fill=(255, 100, 50))
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_path = os.path.join(OUTPUT_DIR, f"{timestamp}_dev.png")
+        img.save(output_path)
+        print(f"[firered] Saved output to {output_path}")
         return img
 
     gc.collect()
@@ -315,6 +322,11 @@ def infer(
             generator=generator,
             true_cfg_scale=guidance_scale,
         ).images[0]
+
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        output_path = os.path.join(OUTPUT_DIR, f"{timestamp}_seed{seed}.png")
+        result_image.save(output_path)
+        print(f"[firered] Saved output to {output_path}")
 
         return result_image
 
