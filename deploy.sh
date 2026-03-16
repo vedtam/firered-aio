@@ -97,10 +97,20 @@ if [[ -d ~/.cache/huggingface ]]; then
     rm -rf ~/.cache/huggingface
 fi
 
+# Only reinstall if requirements.txt has changed since the last install.
+REQS_HASH_FILE="$VENV_DIR/.requirements_hash"
+REQS_HASH=$(md5sum requirements.txt | cut -d' ' -f1)
+if [[ ! -f "$REQS_HASH_FILE" ]] || [[ "$(cat "$REQS_HASH_FILE")" != "$REQS_HASH" ]]; then
+    echo "[runpod] Installing/updating requirements..."
+    "$VENV_DIR/bin/python" -m pip install --upgrade pip -q
+    "$VENV_DIR/bin/pip" install --ignore-installed -r requirements.txt -q
+    echo "$REQS_HASH" > "$REQS_HASH_FILE"
+    echo "[runpod] Requirements installed."
+else
+    echo "[runpod] Requirements up-to-date, skipping install."
+fi
+
 # Start the app in the background (nohup so it survives session end).
-echo "[runpod] Installing requirements..."
-"$VENV_DIR/bin/python" -m pip install --upgrade pip
-"$VENV_DIR/bin/pip" install -r requirements.txt
 
 echo "[runpod] Starting server..."
 pkill -f "python app.py" 2>/dev/null || true

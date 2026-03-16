@@ -49,7 +49,7 @@ Use the `FIRERED_EXECUTION_PROFILE` environment variable to control memory and o
 
 ```bash
 # Example: run with the balanced profile
-FIRERED_EXECUTION_PROFILE=low_mem python app.py
+FIRERED_EXECUTION_PROFILE=balanced python app.py
 ```
 
 You can also override the offload mode directly with `FIRERED_OFFLOAD_MODE` (`none`, `partial`, `model`, or `sequential`).
