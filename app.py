@@ -192,11 +192,23 @@ if not DEV_MODE:
         print(f"GPU VRAM: {total_vram_gib:.2f} GiB")
 
     if device.type == "cuda":
-        try:
-            pipe.transformer.set_attn_processor(QwenDoubleStreamAttnProcessorFA3())
-            print("Flash Attention 3 Processor set successfully.")
-        except Exception as e:
-            print(f"Warning: Could not set FA3 processor, using default: {e}")
+        major, minor = torch.cuda.get_device_capability(0)
+        sm = major * 10 + minor
+        # kernels-community/vllm-flash-attn3 ships CUBIN only for sm_80 (Ampere) and sm_90 (Hopper).
+        # Blackwell (sm_100 / sm_120) and later architectures have no kernel image in the package.
+        if sm > 90:
+            print(
+                f"Skipping FA3 processor: GPU compute capability sm_{sm} is not supported by the "
+                "precompiled vllm-flash-attn3 kernel (requires sm_80 or sm_90). "
+                "Using PyTorch SDPA fallback. To enable FA3 on Blackwell, rebuild flash-attn from "
+                "source with TORCH_CUDA_ARCH_LIST containing your SM version."
+            )
+        else:
+            try:
+                pipe.transformer.set_attn_processor(QwenDoubleStreamAttnProcessorFA3())
+                print("Flash Attention 3 Processor set successfully.")
+            except Exception as e:
+                print(f"Warning: Could not set FA3 processor, using default: {e}")
     else:
         print("Skipping FA3 processor (not on CUDA).")
 
