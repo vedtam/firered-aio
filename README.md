@@ -14,8 +14,8 @@ FireRed-Image-Edit-1.0-Fast is a high-performance, AI-driven image editing appli
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/PRITHIVSAKTHIUR/FireRed-Image-Edit-1.0-Fast.git
-cd FireRed-Image-Edit-1.0-Fast
+git clone https://github.com/vedtam/firered-aio.git
+cd firered-aio
 ```
 
 ### 2. Install Standard Dependencies
